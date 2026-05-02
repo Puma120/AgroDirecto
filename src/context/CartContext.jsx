@@ -44,13 +44,14 @@ export function CartProvider({ children }) {
       }
       // Agrega nuevo item con los campos necesarios
       return [...prev, {
-        id:       product.id,
-        name:     product.name,
-        price:    product.price,
-        unit:     product.unit,
-        image:    product.image,
-        producer: product.producer?.farmName || product.producer?.name,
-        maxOrder: product.maxOrder || 99,
+        id:         product.id,
+        name:       product.name,
+        price:      product.price,
+        unit:       product.unit,
+        image:      product.image,
+        producer:   product.producer?.farmName || product.producer?.name,
+        producerId: product.producer?.id ?? null,
+        maxOrder:   product.maxOrder || 99,
         qty,
       }];
     });

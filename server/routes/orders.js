@@ -32,14 +32,28 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'items y userId son requeridos' });
     }
 
-    // Descontar stock de cada producto
+    // Verificar stock disponible antes de crear el pedido
     for (const item of items) {
-      const result = await Product.findOneAndUpdate(
+      const product = await Product.findById(item.id).select('name stock').lean();
+      if (!product) {
+        return res.status(404).json({ error: `Producto no encontrado: ${item.name || item.id}` });
+      }
+      if (product.stock < item.qty) {
+        return res.status(409).json({
+          error: `Stock insuficiente para "${product.name}": disponible ${product.stock}, solicitado ${item.qty}`,
+          productId: item.id,
+          available: product.stock,
+          requested: item.qty,
+        });
+      }
+    }
+
+    // Descontar stock atómicamente
+    for (const item of items) {
+      await Product.findOneAndUpdate(
         { _id: item.id, stock: { $gte: item.qty } },
         { $inc: { stock: -item.qty } }
       );
-      // Si no se encontró producto con suficiente stock, la operación simplemente no hace nada
-      // (no bloqueamos el pedido en este demo)
     }
 
     const now = new Date();
@@ -59,6 +73,18 @@ router.post('/', async (req, res) => {
     });
 
     res.status(201).json(norm(order));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Pedidos por productor ────────────────────────────────────────────────────
+router.get('/producer/:producerId', async (req, res) => {
+  try {
+    const orders = await Order.find({
+      'items.producerId': req.params.producerId,
+    }).sort({ createdAt: -1 }).lean();
+    res.json(orders.map(norm));
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -87,6 +113,15 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+const STATUS_LABELS = {
+  pending:    'Pedido pendiente',
+  confirmed:  'Pedido confirmado',
+  harvesting: 'Productores cosechando',
+  in_transit: 'En camino',
+  delivered:  'Entregado',
+  cancelled:  'Pedido cancelado',
+};
+
 // ─── Actualizar estado ────────────────────────────────────────────────────────
 router.patch('/:id/status', async (req, res) => {
   try {
@@ -96,14 +131,17 @@ router.patch('/:id/status', async (req, res) => {
       return res.status(400).json({ error: 'Estado inválido' });
     }
 
+    const closing = ['delivered', 'cancelled'].includes(status);
+
     const order = await Order.findByIdAndUpdate(
       req.params.id,
       {
         status,
+        ...(closing ? { closedAt: new Date() } : {}),
         $push: {
           timeline: {
             status,
-            label: status,
+            label: STATUS_LABELS[status] || status,
             timestamp: new Date().toISOString(),
           },
         },
@@ -113,6 +151,19 @@ router.patch('/:id/status', async (req, res) => {
 
     if (!order) return res.status(404).json({ error: 'Pedido no encontrado' });
     res.json(norm(order));
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Limpiar pedidos expirados (closedAt > 2h) ────────────────────────────────
+router.delete('/cleanup', async (req, res) => {
+  try {
+    const cutoff = new Date(Date.now() - 2 * 60 * 60 * 1000); // hace 2 horas
+    const result = await Order.deleteMany({
+      closedAt: { $ne: null, $lt: cutoff },
+    });
+    res.json({ deleted: result.deletedCount });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

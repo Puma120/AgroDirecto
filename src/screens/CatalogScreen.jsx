@@ -86,13 +86,26 @@ export default function CatalogScreen() {
 
   // ─── Agregar al carrito ─────────────────────────────────────────────────────
   const handleAddToCart = useCallback((product) => {
+    const currentQty = getItemQty(product.id);
+    const maxOrder = product.maxOrder || 99;
+    
+    // Si el producto ya está en el carrito y se alcanzó el límite
+    if (currentQty > 0 && currentQty >= maxOrder) {
+      showToast({
+        message: `Solo puedes tener ${maxOrder} ${product.unit} de ${product.name} en tu carrito`,
+        type: 'warning',
+        duration: 3500,
+      });
+      return;
+    }
+    
     addItem(product);
     showToast({
       message: `${product.name} agregado al carrito`,
       type: 'success',
       duration: 2000,
     });
-  }, [addItem, showToast]);
+  }, [addItem, showToast, getItemQty]);
 
   function clearSearch() {
     setSearch('');

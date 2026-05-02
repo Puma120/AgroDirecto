@@ -2,7 +2,7 @@
  * OrderDetailScreen — Detalle y seguimiento de un pedido
  * Timeline de estado, productos, info de entrega
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import {
   ChevronLeft, MapPin, Clock, Package,
@@ -11,7 +11,7 @@ import {
 import Badge from '../components/Badge';
 import Button from '../components/Button';
 import { DetailSkeleton } from '../components/Skeleton';
-import { fetchOrderById } from '../mocks/mockOrders';
+import { fetchOrderById, cancelOrder } from '../mocks/mockOrders';
 import { formatCurrency, formatRelativeDate } from '../utils/formatters';
 import { ROUTES, ORDER_STATUS } from '../utils/constants';
 
@@ -40,8 +40,24 @@ export default function OrderDetailScreen() {
   const location    = useLocation();
   const navigate    = useNavigate();
 
-  const [order,   setOrder]   = useState(location.state?.order || null);
-  const [loading, setLoading] = useState(!location.state?.order);
+  const [order,       setOrder]       = useState(location.state?.order || null);
+  const [loading,     setLoading]     = useState(!location.state?.order);
+  const [cancelling,  setCancelling]  = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const canCancel = order &&
+    [ORDER_STATUS.PENDING, ORDER_STATUS.CONFIRMED].includes(order.status);
+
+  const handleCancel = useCallback(async () => {
+    setCancelling(true);
+    try {
+      const updated = await cancelOrder(order.id);
+      setOrder((prev) => ({ ...prev, status: updated.status }));
+    } finally {
+      setCancelling(false);
+      setShowConfirm(false);
+    }
+  }, [order]);
 
   useEffect(() => {
     if (!location.state?.order) {
@@ -79,7 +95,7 @@ export default function OrderDetailScreen() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8">
+    <div className="min-h-screen bg-gray-50 pb-32">
       {/* ─── Header ──────────────────────────────────────────────── */}
       <div className="sticky top-0 z-30 bg-white border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 px-4 h-14">
@@ -232,15 +248,69 @@ export default function OrderDetailScreen() {
           )}
         </div>
 
-        {/* ─── Acción: ver catálogo ─────────────────────────────────── */}
-        <Button
-          variant="outline"
-          size="full"
-          onClick={() => navigate(ROUTES.CATALOG)}
-        >
-          Hacer otro pedido
-        </Button>
       </div>
+
+      {/* ─── Botones fijos ─────────────────────────────────────── */}
+      <div className="fixed bottom-14 left-0 right-0 z-30 bg-white border-t border-gray-100 shadow-2xl">
+        <div className="px-4 py-3 max-w-lg mx-auto flex gap-3">
+          {canCancel && (
+            <Button
+              variant="outline"
+              size="full"
+              onClick={() => setShowConfirm(true)}
+              className="border-red-200 text-red-600 hover:bg-red-50 flex-1"
+            >
+              <XCircle size={16} className="mr-1.5" />
+              Cancelar pedido
+            </Button>
+          )}
+          <Button
+            size="full"
+            onClick={() => navigate(ROUTES.CATALOG)}
+            className={canCancel ? 'flex-1' : ''}
+          >
+            Hacer otro pedido
+          </Button>
+        </div>
+      </div>
+
+      {/* ─── Modal confirmación cancelar ───────────────────────── */}
+      {showConfirm && (
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-t-3xl p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <XCircle size={20} className="text-red-500" />
+              </div>
+              <div>
+                <p className="font-bold text-gray-900">¿Cancelar pedido?</p>
+                <p className="text-xs text-gray-500 font-mono">{order.id}</p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600">
+              Esta acción no se puede deshacer. El pedido será cancelado y no se realizará ningún cobro.
+            </p>
+            <div className="flex gap-3 pt-1">
+              <Button
+                variant="outline"
+                size="full"
+                onClick={() => setShowConfirm(false)}
+                className="flex-1"
+              >
+                Mantener pedido
+              </Button>
+              <Button
+                size="full"
+                loading={cancelling}
+                onClick={handleCancel}
+                className="flex-1 !bg-red-500 hover:!bg-red-600"
+              >
+                Sí, cancelar
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

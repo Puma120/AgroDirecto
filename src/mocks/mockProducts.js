@@ -127,3 +127,71 @@ export async function fetchRelatedProducts(productId, limit = 4) {
     .filter((p) => p.category === product.category && p.id !== productId && p.available)
     .slice(0, limit);
 }
+
+// ─── CRUD productor ───────────────────────────────────────────────────────────
+
+async function apiMutate(path, method, body) {
+  const res = await fetch(path, {
+    method,
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: `HTTP ${res.status}` }));
+    throw new Error(err.error || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+export async function createProduct(data) {
+  try {
+    const product = await apiMutate('/api/products', 'POST', data);
+    localProducts.unshift(product);
+    return product;
+  } catch (err) {
+    console.warn('[products] createProduct fallback:', err.message);
+    const id = `p_local_${Date.now()}`;
+    const product = { ...data, id, available: true, stock: data.stock || 0 };
+    localProducts.unshift(product);
+    return product;
+  }
+}
+
+export async function updateProduct(id, data) {
+  try {
+    const product = await apiMutate(`/api/products/${id}`, 'PUT', data);
+    localProducts = localProducts.map((p) => (p.id === id ? product : p));
+    return product;
+  } catch (err) {
+    console.warn('[products] updateProduct fallback:', err.message);
+    const idx = localProducts.findIndex((p) => p.id === id);
+    if (idx !== -1) localProducts[idx] = { ...localProducts[idx], ...data };
+    return localProducts[idx] || null;
+  }
+}
+
+export async function deleteProduct(id) {
+  try {
+    await apiMutate(`/api/products/${id}`, 'DELETE', {});
+  } catch (err) {
+    console.warn('[products] deleteProduct fallback:', err.message);
+  }
+  localProducts = localProducts.filter((p) => p.id !== id);
+}
+
+/**
+ * Ajuste de stock con comentario
+ * @param {string} id
+ * @param {number} delta — positivo = entrada, negativo = salida
+ * @param {string} comment — ej: "Cosecha nueva", "Desperdicio"
+ */
+export async function adjustStock(id, delta, comment) {
+  try {
+    return await apiMutate(`/api/products/${id}/stock`, 'PATCH', { delta, comment });
+  } catch (err) {
+    console.warn('[products] adjustStock fallback:', err.message);
+    const p = localProducts.find((p) => p.id === id);
+    if (p) p.stock = Math.max(0, (p.stock || 0) + delta);
+    return p;
+  }
+}

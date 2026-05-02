@@ -32,6 +32,7 @@ const orderSchema = new mongoose.Schema(
     deliveryInfo:      mongoose.Schema.Types.Mixed,
     paymentMethod:     String,
     status:            { type: String, default: 'confirmed' },
+    closedAt:          { type: Date, default: null },   // se pone al entregar/cancelar
     estimatedDelivery: String,
     timeline:          [mongoose.Schema.Types.Mixed],
   },

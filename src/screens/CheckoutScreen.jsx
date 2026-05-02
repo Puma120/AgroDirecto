@@ -118,8 +118,9 @@ export default function CheckoutScreen() {
 
       clearCart();
       navigate(ROUTES.ORDER_SUCCESS, { state: { order }, replace: true });
-    } catch {
-      showToast({ message: 'Error al procesar el pedido. Inténtalo de nuevo.', type: 'error' });
+    } catch (err) {
+      const msg = err?.message || 'Error al procesar el pedido. Inténtalo de nuevo.';
+      showToast({ message: msg, type: 'error' });
     } finally {
       setLoading(false);
     }

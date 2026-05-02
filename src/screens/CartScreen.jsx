@@ -2,12 +2,15 @@
  * CartScreen — Pantalla del carrito de compras
  * Lista de productos, ajuste de cantidad, resumen de orden y CTA a checkout
  */
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Trash2, Plus, Minus, ShoppingBag, ArrowRight, X } from 'lucide-react';
 import AppHeader from '../components/AppHeader';
 import Button from '../components/Button';
 import EmptyState from '../components/EmptyState';
 import { useCart } from '../context/CartContext';
+import { useToast } from '../components/Toast';
+import { fetchProductById } from '../mocks/mockProducts';
 import { formatCurrency } from '../utils/formatters';
 import { ROUTES, BUSINESS_RULES } from '../utils/constants';
 
@@ -17,6 +20,34 @@ export default function CartScreen() {
     items, totals,
     updateQty, removeItem, clearCart,
   } = useCart();
+  const { showToast } = useToast();
+  const [checkingStock, setCheckingStock] = useState(false);
+
+  const handleProceedToCheckout = async () => {
+    setCheckingStock(true);
+    try {
+      for (const item of items) {
+        const product = await fetchProductById(item.id);
+        if (!product) {
+          showToast({ message: `"${item.name}" ya no está disponible.`, type: 'error' });
+          return;
+        }
+        if (product.stock < item.qty) {
+          showToast({
+            message: `Stock insuficiente para "${item.name}": disponible ${product.stock}, en tu carrito ${item.qty}.`,
+            type: 'error',
+          });
+          return;
+        }
+      }
+      navigate(ROUTES.CHECKOUT);
+    } catch {
+      // Si la API no responde, dejar pasar (el checkout hará la validación final)
+      navigate(ROUTES.CHECKOUT);
+    } finally {
+      setCheckingStock(false);
+    }
+  };
 
   const toFreeShipping = BUSINESS_RULES.FREE_SHIPPING_THRESHOLD - totals.subtotal;
 
@@ -128,10 +159,11 @@ export default function CartScreen() {
           <div className="px-4 py-3 max-w-lg mx-auto">
             <Button
               size="full"
-              onClick={() => navigate(ROUTES.CHECKOUT)}
+              onClick={handleProceedToCheckout}
+              disabled={checkingStock}
               icon={<ArrowRight size={18} />}
             >
-              Proceder al pago — {formatCurrency(totals.total)}
+              {checkingStock ? 'Verificando stock…' : `Proceder al pago — ${formatCurrency(totals.total)}`}
             </Button>
             <p className="text-xs text-gray-400 text-center mt-2">
               {totals.itemCount} producto{totals.itemCount !== 1 ? 's' : ''}

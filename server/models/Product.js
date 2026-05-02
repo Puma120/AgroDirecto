@@ -39,6 +39,14 @@ const productSchema = new mongoose.Schema(
     tags:               [String],
     nutritionHighlights:[String],
     available:          { type: Boolean, default: true },
+    stockLog:           [
+      {
+        delta:     Number,
+        comment:   String,
+        timestamp: { type: Date, default: Date.now },
+        _id:       false,
+      },
+    ],
   },
   { _id: false, timestamps: true }
 );
