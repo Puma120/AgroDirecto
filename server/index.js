@@ -18,20 +18,16 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ─── CORS ─────────────────────────────────────────────────────────────────────
-// En producción, ALLOWED_ORIGINS contiene la URL de Vercel (separada por comas si hay varias).
-// En desarrollo se permiten los puertos locales de Vite.
-const DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:4173'];
+// El app usa JWT en localStorage (no cookies), por lo que no necesita credentials.
+// Se permiten todos los orígenes para simplificar el deploy.
+// Si quieres restringirlo, pon: ALLOWED_ORIGINS=https://tu-dominio.vercel.app
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? [...process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()), ...DEV_ORIGINS]
-  : DEV_ORIGINS;
+  ? process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim())
+  : null; // null = todos los orígenes
 
 app.use(cors({
-  origin: (origin, cb) => {
-    // Permitir llamadas sin origin (Postman, curl, Render health-check)
-    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origen no permitido → ${origin}`));
-  },
-  credentials: true,
+  origin: allowedOrigins ?? '*',
+  credentials: false,
 }));
 app.use(express.json());
 
