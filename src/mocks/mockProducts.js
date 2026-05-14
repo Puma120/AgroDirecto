@@ -3,6 +3,7 @@
  * Llama a /api/products primero; si no hay servidor, usa el JSON local como fallback.
  */
 import productsData from './products.json';
+import { API_BASE } from '../utils/api';
 
 /** Simula latencia de red (solo en fallback) */
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -10,9 +11,9 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 // Copia local para fallback
 let localProducts = [...productsData];
 
-// ─── Helpers API ──────────────────────────────────────────────────────────────
+// ─── Helpers API ─────────────────────────────────────────────────────
 async function apiFetch(path) {
-  const res = await fetch(path);
+  const res = await fetch(API_BASE + path);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   return res.json();
 }
@@ -131,7 +132,7 @@ export async function fetchRelatedProducts(productId, limit = 4) {
 // ─── CRUD productor ───────────────────────────────────────────────────────────
 
 async function apiMutate(path, method, body) {
-  const res = await fetch(path, {
+  const res = await fetch(API_BASE + path, {
     method,
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

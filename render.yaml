@@ -1,0 +1,21 @@
+# render.yaml — Configuración del backend en Render
+# Documentación: https://render.com/docs/render-yaml-spec
+
+services:
+  - type: web
+    name: agrodirecto-api
+    runtime: node
+    rootDir: server
+    buildCommand: npm install
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: MONGO_CLUSTER_URL
+        sync: false          # Se rellena manualmente en el dashboard de Render
+      - key: JWT_SECRET
+        generateValue: true  # Render genera un valor seguro automáticamente
+      - key: ALLOWED_ORIGINS
+        sync: false          # Poner la URL de Vercel, p. ej. https://agrodirecto.vercel.app

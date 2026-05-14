@@ -4,6 +4,7 @@
  */
 import users from './users.json';
 import { STORAGE_KEYS } from '../utils/constants';
+import { API_BASE } from '../utils/api';
 
 /** Simula latencia de red (solo en fallback) */
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
@@ -14,7 +15,7 @@ function generateMockToken(userId) {
 
 // ─── Helpers API ─────────────────────────────────────────────────────────────
 async function apiPost(path, body) {
-  const res = await fetch(path, {
+  const res = await fetch(API_BASE + path, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(body),

@@ -3,6 +3,7 @@
  * Llama a /api/orders primero; si no hay servidor, usa localStorage como fallback.
  */
 import { STORAGE_KEYS, ORDER_STATUS } from '../utils/constants';
+import { API_BASE } from '../utils/api';
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
@@ -27,7 +28,7 @@ export async function createOrder({ items, totals, deliveryInfo, paymentMethod, 
   // 1) Intentar API real
   let networkError = false;
   try {
-    const res = await fetch('/api/orders', {
+    const res = await fetch(API_BASE + '/api/orders', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ items, totals, deliveryInfo, paymentMethod, userId }),
@@ -72,7 +73,7 @@ export async function createOrder({ items, totals, deliveryInfo, paymentMethod, 
 // ─── Listar pedidos del usuario ───────────────────────────────────────────────
 export async function fetchOrders(userId) {
   try {
-    const res = await fetch(`/api/orders?userId=${encodeURIComponent(userId)}`);
+    const res = await fetch(API_BASE + `/api/orders?userId=${encodeURIComponent(userId)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   } catch {
@@ -85,7 +86,7 @@ export async function fetchOrders(userId) {
 // ─── Detalle de pedido ────────────────────────────────────────────────────────
 export async function fetchOrderById(orderId) {
   try {
-    const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}`);
+    const res = await fetch(API_BASE + `/api/orders/${encodeURIComponent(orderId)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   } catch {
@@ -102,7 +103,7 @@ export async function cancelOrder(orderId) {
 // ─── Actualizar estado (genérico, para uso del productor) ─────────────────────
 export async function updateOrderStatus(orderId, status) {
   try {
-    const res = await fetch(`/api/orders/${encodeURIComponent(orderId)}/status`, {
+    const res = await fetch(API_BASE + `/api/orders/${encodeURIComponent(orderId)}/status`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -128,7 +129,7 @@ export async function updateOrderStatus(orderId, status) {
 // ─── Pedidos del productor ────────────────────────────────────────────────────
 export async function fetchProducerOrders(producerId) {
   try {
-    const res = await fetch(`/api/orders/producer/${encodeURIComponent(producerId)}`);
+    const res = await fetch(API_BASE + `/api/orders/producer/${encodeURIComponent(producerId)}`);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return res.json();
   } catch {
@@ -144,7 +145,7 @@ export async function fetchProducerOrders(producerId) {
 // Se llama en cada carga de la app. Borra pedidos con closedAt > 2h.
 export async function cleanupExpiredOrders() {
   try {
-    await fetch('/api/orders/cleanup', { method: 'DELETE' });
+    await fetch(API_BASE + '/api/orders/cleanup', { method: 'DELETE' });
   } catch {
     // Fallback: limpiar localStorage también
   }

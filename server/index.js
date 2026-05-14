@@ -17,8 +17,22 @@ import orderRoutes    from './routes/orders.js';
 const app  = express();
 const PORT = process.env.PORT || 3001;
 
-// ─── Middleware ───────────────────────────────────────────────────────────────
-app.use(cors({ origin: ['http://localhost:5173', 'http://localhost:4173'], credentials: true }));
+// ─── CORS ─────────────────────────────────────────────────────────────────────
+// En producción, ALLOWED_ORIGINS contiene la URL de Vercel (separada por comas si hay varias).
+// En desarrollo se permiten los puertos locales de Vite.
+const DEV_ORIGINS = ['http://localhost:5173', 'http://localhost:4173'];
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? [...process.env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()), ...DEV_ORIGINS]
+  : DEV_ORIGINS;
+
+app.use(cors({
+  origin: (origin, cb) => {
+    // Permitir llamadas sin origin (Postman, curl, Render health-check)
+    if (!origin || allowedOrigins.includes(origin)) return cb(null, true);
+    cb(new Error(`CORS: origen no permitido → ${origin}`));
+  },
+  credentials: true,
+}));
 app.use(express.json());
 
 // ─── Rutas ────────────────────────────────────────────────────────────────────
